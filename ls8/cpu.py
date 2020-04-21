@@ -7,7 +7,7 @@ class CPU:
 
     def __init__(self):
         """Construct a new CPU."""
-        self.ram = [0] * 8
+        self.ram = [0] * 256
         self.reg = [0] * 8
         self.pc = self.reg[0]
         self.commands = {
@@ -44,11 +44,6 @@ class CPU:
 
         address = 0
 
-        # with open(program) as f:
-        #     lines = f.readlines()
-        #     lines = [line for line in lines if line.startswith('0') or line.startswith('1')]
-        #     program = [int(line[:8], 2) for line in lines]
-
         # For now, we've just hardcoded a program:
         if program == None:
             program = [
@@ -61,9 +56,48 @@ class CPU:
                 0b00000001, # HLT
             ]
 
-        for instruction in program:
-            self.ram[address] = instruction
-            address += 1
+            for instruction in program:
+                self.ram[address] = instruction
+                address += 1
+
+        elif program == "test":
+            program = [
+                # From print8.ls8
+                0b10000010, # LDI R0,8
+                0b00000000,
+                0b00001000,
+                0b10000010, # LDI R1,9
+                0b00000001,
+                0b00001001,
+                0b10100010, # MUL R0,R1
+                0b00000000,
+                0b00000001,
+                0b01000111, # PRN R0
+                0b00000000,
+                0b00000001, # HLT
+            ]
+
+            for instruction in program:
+                self.ram[address] = instruction
+                address += 1
+
+        elif program != None:
+            try:
+                with open(program) as f:
+                    for line in f:
+                        #parse out comments
+                        comment_split = line.strip().split("#")
+                        # Cast number string to int
+                        value = comment_split[0].strip()
+                        #ignore blank lines
+                        if value == "":
+                            continue
+                        #populate memory array
+                        self.ram[address] = int(value, 2)
+                        address += 1   
+            except FileNotFoundError:
+                print("File not found")
+                sys.exit(2)
 
 
     def alu(self, op, reg_a, reg_b):
@@ -102,9 +136,12 @@ class CPU:
 
         while running:
             ir = self.ram[self.pc]
+            # print(ir)
 
             operand_a = self.ram_read(self.pc + 1)
+            # print(operand_a)
             operand_b = self.ram_read(self.pc + 2)
+            # print(operand_b)
 
             try:
                 operation_output = self.commands[ir](operand_a, operand_b)
