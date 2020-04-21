@@ -104,3 +104,4 @@ venv.bak/
 
 # mypy
 .mypy_cache/
+ls8/cpu_c.py

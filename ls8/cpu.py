@@ -8,26 +8,58 @@ class CPU:
     def __init__(self):
         """Construct a new CPU."""
         self.ram = [0] * 8
-        self.register = [0] * 8
-        self.pc = 0
+        self.reg = [0] * 8
+        self.pc = self.reg[0]
+        self.commands = {
+            0b00000001: self.hlt,
+            0b10000010: self.ldi,
+            0b01000111: self.prn,
+            0b10100010: self.mul
+        }
 
 
-    def load(self):
+    def ram_read(self, address):
+        return self.ram[address]
+
+    def ram_write(self, value, address):
+        self.ram[address] = value
+
+    def hlt(self, operand_a, operand_b):
+        return (0, False)
+
+    def ldi(self, operand_a, operand_b):
+        self.reg[operand_a] = operand_b
+        return (3, True)
+
+    def prn(self, operand_a, operand_b):
+        print(self.reg[operand_a])
+        return (2, True)
+
+    def mul(self, operand_a, operand_b):
+        self.alu("MUL", operand_a, operand_b)
+        return (3, True)
+
+    def load(self, program=None):
         """Load a program into memory."""
 
         address = 0
 
-        # For now, we've just hardcoded a program:
+        # with open(program) as f:
+        #     lines = f.readlines()
+        #     lines = [line for line in lines if line.startswith('0') or line.startswith('1')]
+        #     program = [int(line[:8], 2) for line in lines]
 
-        program = [
-            # From print8.ls8
-            0b10000010, # LDI R0,8
-            0b00000000,
-            0b00001000,
-            0b01000111, # PRN R0
-            0b00000000,
-            0b00000001, # HLT
-        ]
+        # For now, we've just hardcoded a program:
+        if program == None:
+            program = [
+                # From print8.ls8
+                0b10000010, # LDI R0,8
+                0b00000000,
+                0b00001000,
+                0b01000111, # PRN R0
+                0b00000000,
+                0b00000001, # HLT
+            ]
 
         for instruction in program:
             self.ram[address] = instruction
@@ -39,7 +71,8 @@ class CPU:
 
         if op == "ADD":
             self.reg[reg_a] += self.reg[reg_b]
-        #elif op == "SUB": etc
+        elif op == "MUL":
+                self.reg[reg_a] = (self.reg[reg_a] * self.reg[reg_b])
         else:
             raise Exception("Unsupported ALU operation")
 
@@ -68,24 +101,16 @@ class CPU:
         running = True
 
         while running:
-            #LDI
-            if self.ram[self.pc] == 0b10000010:
-                self.register[int(str(self.ram[self.pc + 1]), 2)] = self.ram[self.pc + 2]
-                self.pc += 3
+            ir = self.ram[self.pc]
 
-            #PRN
-            elif self.ram[self.pc] == 0b01000111:
-                print(self.register[int(str(self.ram[self.pc + 1]), 2)])
-                self.pc += 2
+            operand_a = self.ram_read(self.pc + 1)
+            operand_b = self.ram_read(self.pc + 2)
 
-            #HLT
-            elif self.ram[self.pc] == 0b00000001:
-                self.pc = 0
-                running = False
+            try:
+                operation_output = self.commands[ir](operand_a, operand_b)
+                running = operation_output[1]
+                self.pc += operation_output[0]
 
-
-    def ram_read(self, address):
-        return self.ram[int(str(address), 2)]
-
-    def ram_write(self, address, value):
-        self.ram[int(str(address), 2)] = value
+            except:
+                print(f"command: {ir}")
+                sys.exit()
