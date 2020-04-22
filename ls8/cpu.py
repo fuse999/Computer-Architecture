@@ -14,7 +14,9 @@ class CPU:
             0b00000001: self.hlt,
             0b10000010: self.ldi,
             0b01000111: self.prn,
-            0b10100010: self.mul
+            0b10100010: self.mul,
+            0b01000101: self.push,
+            0b01000110: self.pop
         }
 
 
@@ -38,6 +40,20 @@ class CPU:
     def mul(self, operand_a, operand_b):
         self.alu("MUL", operand_a, operand_b)
         return (3, True)
+
+    def push (self, operand_a, operand_b):
+        self.reg[7] -= 1
+        sp = self.reg[7]
+        value = self.reg[operand_a]
+        self.ram[sp] = value
+        return (2, True)
+
+    def pop (self, operand_a, operand_b):
+        sp = self.reg[7]
+        value = self.ram[sp]
+        self.reg[operand_a] = value
+        self.reg[7] += 1
+        return (2, True)
 
     def load(self, program=None):
         """Load a program into memory."""
