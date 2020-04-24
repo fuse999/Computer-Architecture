@@ -16,7 +16,10 @@ class CPU:
             0b01000111: self.prn,
             0b10100010: self.mul,
             0b01000101: self.push,
-            0b01000110: self.pop
+            0b01000110: self.pop,
+            0b01010000: self.call,
+            0b00010001: self.ret,
+            0b10100000: self.add
         }
 
 
@@ -41,19 +44,36 @@ class CPU:
         self.alu("MUL", operand_a, operand_b)
         return (3, True)
 
-    def push (self, operand_a, operand_b):
+    def push(self, operand_a, operand_b):
         self.reg[7] -= 1
         sp = self.reg[7]
         value = self.reg[operand_a]
         self.ram[sp] = value
         return (2, True)
 
-    def pop (self, operand_a, operand_b):
+    def pop(self, operand_a, operand_b):
         sp = self.reg[7]
         value = self.ram[sp]
         self.reg[operand_a] = value
         self.reg[7] += 1
         return (2, True)
+
+    def call(self, operand_a, operand_b):
+        self.reg[7] -= 1
+        self.ram[self.reg[7]] = self.pc + 2
+        update_reg = self.ram[self.pc + 1]
+        self.pc = self.reg[update_reg]
+        return (None, True)
+
+    def ret(self, operand_a, operand_b):
+        self.pc = self.ram[self.reg[7]]
+        self.reg[7] += 1
+        return (None, True)
+
+    def add(self, operand_a, operand_b):
+        self.alu("ADD", operand_a, operand_b)
+        return (3, True)
+
 
     def load(self, program=None):
         """Load a program into memory."""
@@ -79,18 +99,37 @@ class CPU:
         elif program == "test":
             program = [
                 # From print8.ls8
-                0b10000010, # LDI R0,8
-                0b00000000,
-                0b00001000,
-                0b10000010, # LDI R1,9
+                0b10000010, # LDI R1,MULT2PRINT
                 0b00000001,
-                0b00001001,
-                0b10100010, # MUL R0,R1
+                0b00011000,
+                0b10000010, # LDI R0,10
                 0b00000000,
+                0b00001010,
+                0b01010000, # CALL R1
                 0b00000001,
+                0b10000010, # LDI R0,15
+                0b00000000,
+                0b00001111,
+                0b01010000, # CALL R1
+                0b00000001,
+                0b10000010, # LDI R0,18
+                0b00000000,
+                0b00010010,
+                0b01010000, # CALL R1
+                0b00000001,
+                0b10000010, # LDI R0,30
+                0b00000000,
+                0b00011110,
+                0b01010000, # CALL R1
+                0b00000001,
+                0b00000001, # HLT
+                # MULT2PRINT (address 24):
+                0b10100000, # ADD R0,R0
+                0b00000000,
+                0b00000000,
                 0b01000111, # PRN R0
                 0b00000000,
-                0b00000001, # HLT
+                0b00010001, # RET
             ]
 
             for instruction in program:
@@ -158,11 +197,15 @@ class CPU:
             # print(operand_a)
             operand_b = self.ram_read(self.pc + 2)
             # print(operand_b)
-
-            try:
+            # print("try")
+            try: 
                 operation_output = self.commands[ir](operand_a, operand_b)
                 running = operation_output[1]
-                self.pc += operation_output[0]
+                if operation_output[0] == None:
+                    # print("call or ret done")
+                    continue
+                else:
+                    self.pc += operation_output[0]
 
             except:
                 print(f"command: {ir}")
